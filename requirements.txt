@@ -1,0 +1,6 @@
+requests
+freezegun
+sgp4
+coverage
+ephem
+numpy
