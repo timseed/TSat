@@ -9,7 +9,6 @@ import ephem
 import numpy as np
 
 
-@freeze_time("2019-10-2 08:15")
 class TestCeltrack(TestCase):
     weather = """NOAA 1 [-]
 1 04793U 70106A   19274.83132212 -.00000026  00000-0  11558-3 0  9994
@@ -86,6 +85,7 @@ NOAA 20 [+]
         """
         self.cel = Celtrack()
 
+    @freeze_time("2019-10-2 08:15")
     def test_freeze(self):
         """
         Check the time has been frozen
@@ -93,6 +93,7 @@ NOAA 20 [+]
         """
         assert datetime.now() == datetime(2019, 10, 2, 8, 15)
 
+    @freeze_time("2019-10-2 08:15")
     @patch('tsat.Celtrack.get', return_value=weather)
     def test_get(self, mock_function):
         data = self.cel.get("weather_url")
@@ -109,6 +110,7 @@ NOAA 20 [+]
         self.assertEqual("NOAA 20 [+]", sat_data_obj.getname(0))
         self.assertEqual("NOAA 1 [-]", sat_data_obj.getname(21))
 
+    @freeze_time("2019-10-2 08:15")
     def test_position(self):
         self.cel.read_tle_data(self.weather)
         noaa_19 = self.cel.satellites.find('NOAA 19 [+]')
@@ -166,26 +168,20 @@ NOAA 20 [+]
         starttime = datetime.now()
         endtime = starttime + timedelta(days=3)
 
-        next = []
+        future_passes = []
         while True:
             next_pass = self.cel.location.next_pass(noaa19, singlepass=False)
-            next.append(next_pass)
+
+            # Lets check the Max Az of this pass
+            max_az_date = Celtrack.ephemDatetoPython(next_pass[2])
+            self.cel.location.date = max_az_date
+            noaa19.compute(self.cel.location)
+            if np.rad2deg(noaa19.az) > self.cel.min_ele:
+                future_passes.append(next_pass)
             # Update the date
-            self.cel.location.date = datetime(next_pass[4].tuple()[0],
-                                              next_pass[4].tuple()[1],
-                                              next_pass[4].tuple()[2],
-                                              next_pass[4].tuple()[3],
-                                              next_pass[4].tuple()[4],
-                                              int(next_pass[4].tuple()[5])) \
-                                     + timedelta(minutes=5)
-            if self.cel.location.date > endtime:
+
+            look_from = Celtrack.ephemDatetoPython(next_pass[4]) + timedelta(minutes=1)
+            self.cel.location.date = look_from
+            if look_from > endtime:
                 break
-            junk = 1
-        #     self.cel.location.date = date
-        #     sat_observed = SatLoc(when=date,
-        #            el=np.rad2deg(noaa19.alt),
-        #            az=np.rad2deg(noaa19.az))
-        #     if sat_observed.az>= self.cel.min_ele:
-        #         #Should be everything
-        #         location.positions.append(sat_observed)
-        # self.assertEqual(4320, len(location.positions))
+        self.assertEqual(17, len(future_passes))

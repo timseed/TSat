@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import ephem
 from datetime import datetime
 import numpy as np
+from ephem import Date as ephemDate
 
 
 @dataclass
@@ -63,6 +64,21 @@ class Satellites:
 
 class Celtrack:
 
+    @staticmethod
+    def ephemDatetoPython(ephem_date: ephemDate) -> datetime:
+        """
+        Convert the Ephem_Date to python date
+        :param ephem_date:
+        :return:
+        """
+        rv = datetime(ephem_date.tuple()[0],
+             ephem_date.tuple()[1],
+             ephem_date.tuple()[2],
+             ephem_date.tuple()[3],
+             ephem_date.tuple()[4],
+             int(ephem_date.tuple()[5]))
+        return rv
+
     def __init__(self):
         datasets = ['http://celestrak.com/NORAD/elements/active.txt',
                     'http://celestrak.com/NORAD/elements/weather.txt',
@@ -95,6 +111,7 @@ class Celtrack:
         if r.status_code == 200:
             data = r.content.decode('utf-8')
             return data
+
 
     def read_tle_data(self, tle_data: str) -> Optional[Satellites]:
         lines = tle_data.split('\n')
