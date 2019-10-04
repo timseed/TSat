@@ -5,7 +5,7 @@ import ephem
 from datetime import datetime
 import numpy as np
 from ephem import Date as ephemDate
-
+from os.path import isfile
 
 @dataclass
 class SatData:
@@ -79,10 +79,12 @@ class Celtrack:
              int(ephem_date.tuple()[5]))
         return rv
 
+    datasets = ['http://celestrak.com/NORAD/elements/active.txt',
+                'http://celestrak.com/NORAD/elements/weather.txt',
+                'http://celestrak.com/NORAD/elements/amateur.txt']
+
     def __init__(self):
-        datasets = ['http://celestrak.com/NORAD/elements/active.txt',
-                    'http://celestrak.com/NORAD/elements/weather.txt',
-                    'http://celestrak.com/NORAD/elements/amateur.txt']
+
         self._sats = Satellites()
 
         # Setup lat long of telescope
@@ -129,3 +131,17 @@ class Celtrack:
         except IndexError as i_error:
             pass
         return self._sats
+
+    def fetch_tle(self):
+        for u in Celtrack.datasets:
+            filename = u.split('/')[-1]
+            if isfile(filename):
+                print(f"Ignoring downloading {filename}. File is present.")
+            else:
+                result=requests.get(u)
+                if result.status_code==200:
+                    with open(u.split('/')[-1],"wt") as savefile:
+                        savefile.write(result.content.decode('utf-8'))
+                else:
+                    print(f"Unable to download {u}")
+
